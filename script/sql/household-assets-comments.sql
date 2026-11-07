@@ -1,0 +1,108 @@
+ALTER TABLE financial_family
+    COMMENT = '家庭资产账本',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键编号',
+    MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户编号',
+    MODIFY COLUMN name VARCHAR(80) NOT NULL COMMENT '家庭账本名称',
+    MODIFY COLUMN owner_user_id BIGINT NOT NULL COMMENT '账本所有者系统用户编号',
+    MODIFY COLUMN allow_view_others BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否允许普通成员查看其他成员资产，不授予编辑权限',
+    MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    MODIFY COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间';
+
+ALTER TABLE financial_member
+    COMMENT = '家庭资产成员',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键编号',
+    MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户编号',
+    MODIFY COLUMN family_id BIGINT NOT NULL COMMENT '家庭账本编号',
+    MODIFY COLUMN user_id BIGINT NULL COMMENT '关联的系统用户编号，NULL 表示未关联登录用户',
+    MODIFY COLUMN display_name VARCHAR(40) NOT NULL COMMENT '成员显示名称',
+    MODIFY COLUMN role VARCHAR(12) NOT NULL DEFAULT 'member' COMMENT '成员角色：owner 所有者，member 普通成员',
+    MODIFY COLUMN sort_order INT NOT NULL DEFAULT 0 COMMENT '显示顺序，数值越小越靠前',
+    MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间';
+
+ALTER TABLE financial_category
+    COMMENT = '家庭资产分类',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键编号',
+    MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户编号',
+    MODIFY COLUMN family_id BIGINT NOT NULL COMMENT '家庭账本编号',
+    MODIFY COLUMN code VARCHAR(20) NOT NULL COMMENT '分类编码：liquid 流动资金、fixed 固定资产、investment 投资理财、receivable 应收款、liability 负债',
+    MODIFY COLUMN name VARCHAR(40) NOT NULL COMMENT '分类显示名称',
+    MODIFY COLUMN icon VARCHAR(40) NOT NULL COMMENT '分类图标标识',
+    MODIFY COLUMN color VARCHAR(7) NOT NULL COMMENT '分类颜色，格式为 #RRGGBB',
+    MODIFY COLUMN description VARCHAR(400) NOT NULL COMMENT '分类说明',
+    MODIFY COLUMN sort_order INT NOT NULL DEFAULT 0 COMMENT '显示顺序，数值越小越靠前',
+    MODIFY COLUMN enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否启用分类',
+    MODIFY COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间';
+
+ALTER TABLE financial_account
+    COMMENT = '家庭资产账户',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键编号',
+    MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户编号',
+    MODIFY COLUMN family_id BIGINT NOT NULL COMMENT '家庭账本编号',
+    MODIFY COLUMN member_id BIGINT NOT NULL COMMENT '家庭成员编号',
+    MODIFY COLUMN category_code VARCHAR(20) NOT NULL COMMENT '资产分类编码：liquid、fixed、investment、receivable、liability',
+    MODIFY COLUMN name VARCHAR(80) NOT NULL COMMENT '账户名称',
+    MODIFY COLUMN template_code VARCHAR(30) NULL COMMENT '系统账户模板编码，NULL 表示自定义账户',
+    MODIFY COLUMN balance DECIMAL(18,2) NULL COMMENT '账户余额或估值，单位元；NULL 表示待填写，0 表示明确为零，负债按正数记录',
+    MODIFY COLUMN currency CHAR(3) NOT NULL DEFAULT 'CNY' COMMENT '币种代码，当前业务仅使用 CNY 人民币',
+    MODIFY COLUMN fund_bucket VARCHAR(16) NULL COMMENT '资金用途：liquid 活钱、stable 稳健、long_term 长期、insurance 保险；NULL 表示未分配',
+    MODIFY COLUMN insurance_type VARCHAR(20) NULL COMMENT '保险类型：意外、医疗、重疾、寿险、其他；仅保险用途账户可填写',
+    MODIFY COLUMN source_type VARCHAR(12) NOT NULL DEFAULT 'manual' COMMENT '数据来源：manual 手动录入，import 导入',
+    MODIFY COLUMN data_date DATE NOT NULL COMMENT '账户数据日期，可早于记账日期，不得晚于今天',
+    MODIFY COLUMN sort_order INT NOT NULL DEFAULT 0 COMMENT '显示顺序，数值越小越靠前',
+    MODIFY COLUMN remark VARCHAR(500) NOT NULL DEFAULT '' COMMENT '账户备注',
+    MODIFY COLUMN version BIGINT NOT NULL DEFAULT 1 COMMENT '乐观锁版本号，每次修改加一',
+    MODIFY COLUMN deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT '逻辑删除标记：0 正常，1 已删除',
+    MODIFY COLUMN creator BIGINT NOT NULL COMMENT '创建人系统用户编号',
+    MODIFY COLUMN updater BIGINT NOT NULL COMMENT '最后修改人系统用户编号',
+    MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    MODIFY COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间';
+
+ALTER TABLE financial_update_batch
+    COMMENT = '家庭资产更新批次',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键编号',
+    MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户编号',
+    MODIFY COLUMN family_id BIGINT NOT NULL COMMENT '家庭账本编号',
+    MODIFY COLUMN operator_user_id BIGINT NOT NULL COMMENT '操作人系统用户编号',
+    MODIFY COLUMN request_id VARCHAR(64) NOT NULL COMMENT '客户端提交请求编号，同一租户和家庭内唯一，用于幂等',
+    MODIFY COLUMN request_hash CHAR(64) NOT NULL COMMENT '提交内容的 SHA-256 摘要，防止同一请求编号提交不同内容',
+    MODIFY COLUMN update_date DATE NOT NULL COMMENT '记账日期，用于生成每日快照，不得早于家庭最近快照日期或晚于今天',
+    MODIFY COLUMN total_assets DECIMAL(24,2) NOT NULL DEFAULT 0 COMMENT '总资产金额，单位元，不含负债',
+    MODIFY COLUMN total_liabilities DECIMAL(24,2) NOT NULL DEFAULT 0 COMMENT '总负债金额，单位元，按正数记录',
+    MODIFY COLUMN net_assets DECIMAL(24,2) NOT NULL DEFAULT 0 COMMENT '净资产金额，单位元，总资产减总负债，可为负数',
+    MODIFY COLUMN source VARCHAR(12) NOT NULL DEFAULT 'manual' COMMENT '批次来源：manual 手动录入，import 导入',
+    MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '本次提交的操作时间';
+
+ALTER TABLE financial_update_record
+    COMMENT = '家庭资产账户更新明细',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键编号',
+    MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户编号',
+    MODIFY COLUMN family_id BIGINT NOT NULL COMMENT '家庭账本编号',
+    MODIFY COLUMN batch_id BIGINT NOT NULL COMMENT '所属资产更新批次编号',
+    MODIFY COLUMN account_id BIGINT NOT NULL COMMENT '资产账户编号，账户删除后仍保留记录',
+    MODIFY COLUMN member_id BIGINT NOT NULL COMMENT '家庭成员编号',
+    MODIFY COLUMN category_code VARCHAR(20) NOT NULL COMMENT '资产分类编码：liquid、fixed、investment、receivable、liability',
+    MODIFY COLUMN account_name VARCHAR(80) NOT NULL COMMENT '操作时的账户名称，保留历史值',
+    MODIFY COLUMN previous_balance DECIMAL(18,2) NULL COMMENT '修改前余额，单位元；NULL 表示此前待填写或账户不存在',
+    MODIFY COLUMN current_balance DECIMAL(18,2) NULL COMMENT '修改后余额，单位元；NULL 表示待填写或本次删除账户',
+    MODIFY COLUMN change_amount DECIMAL(19,2) NOT NULL COMMENT '余额变化金额，单位元；修改后减修改前，NULL 按零计算',
+    MODIFY COLUMN operation VARCHAR(12) NOT NULL COMMENT '操作类型：create 新建、update 更新、delete 删除',
+    MODIFY COLUMN source_type VARCHAR(12) NOT NULL DEFAULT 'manual' COMMENT '数据来源：manual 手动录入，import 导入',
+    MODIFY COLUMN operator_user_id BIGINT NOT NULL COMMENT '操作人系统用户编号',
+    MODIFY COLUMN data_date DATE NOT NULL COMMENT '账户数据日期，可早于记账日期，不得晚于今天',
+    MODIFY COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '本次操作时间，与账户数据日期分别记录';
+
+ALTER TABLE financial_snapshot
+    COMMENT = '家庭资产每日快照',
+    MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键编号',
+    MODIFY COLUMN tenant_id BIGINT NOT NULL COMMENT '租户编号',
+    MODIFY COLUMN family_id BIGINT NOT NULL COMMENT '家庭账本编号',
+    MODIFY COLUMN member_id BIGINT NOT NULL COMMENT '家庭成员编号，0 表示家庭汇总，其余为成员快照',
+    MODIFY COLUMN snapshot_date DATE NOT NULL COMMENT '快照记账日期，同一家庭和成员同日仅保留最后一次结果',
+    MODIFY COLUMN liquid_amount DECIMAL(24,2) NOT NULL COMMENT '流动资金金额，单位元',
+    MODIFY COLUMN fixed_amount DECIMAL(24,2) NOT NULL COMMENT '固定资产估值，单位元',
+    MODIFY COLUMN investment_amount DECIMAL(24,2) NOT NULL COMMENT '投资理财金额，单位元',
+    MODIFY COLUMN receivable_amount DECIMAL(24,2) NOT NULL COMMENT '应收款金额，单位元',
+    MODIFY COLUMN liability_amount DECIMAL(24,2) NOT NULL COMMENT '总负债金额，单位元，按正数记录',
+    MODIFY COLUMN total_assets DECIMAL(24,2) NOT NULL COMMENT '总资产金额，单位元，不含负债',
+    MODIFY COLUMN net_assets DECIMAL(24,2) NOT NULL COMMENT '净资产金额，单位元，总资产减总负债，可为负数',
+    MODIFY COLUMN updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间';

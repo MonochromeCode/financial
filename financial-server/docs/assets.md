@@ -4,12 +4,37 @@
 
 ## 部署
 
-1. 在业务数据库执行 `script/sql/household-assets.sql`。脚本仅创建七张 `financial_*` 表，不删除已有数据，可重复执行。
+1. 新库在业务数据库执行 `script/sql/household-assets.sql`，创建带表、字段注释的七张 `financial_*` 表。已有库补充注释时执行 `script/sql/household-assets-comments.sql`；`CREATE TABLE IF NOT EXISTS` 不会更新已有表的注释。两个脚本均可重复执行，不删除已有数据。
 2. 使用 JDK 25 构建：`mvn -pl financial-server -am package`，然后重新启动服务。
 3. 启动 Vben 的 `apps/web-antd`。入口为 `/dashboard/workspace`，编辑页为 `/finance/assets/edit`，管理页为 `/finance/assets/manage`。
 4. 首次使用点击“建立家庭账本”。所有者可以创建成员，并关联同租户下已启用的系统用户编号。一个系统用户只关联一个家庭成员。默认普通成员仅能查看、编辑本人资产。
 
 单账户金额上限由 `financial.assets.max-account-balance` 配置，默认 `999999999999.99` 元。也可以设置环境变量 `FINANCIAL_ASSETS_MAX_ACCOUNT_BALANCE`。金额在数据库使用 DECIMAL、服务端使用 BigDecimal；响应中的金额使用十进制字符串，前端即时汇总使用整数分。
+
+## 数据库字段维护
+
+初始化脚本 `script/sql/household-assets.sql` 是家庭资产模块的完整建表定义，包含七张表、88 个字段及其中文注释。`script/sql/household-assets-comments.sql` 用于为相同字段定义的已有库补齐注释；MySQL 的 `MODIFY COLUMN` 必须包含完整字段定义，因此该脚本保留初始化脚本中的类型、长度、精度、默认值、可空性、自增及时间自动更新规则，不增删字段、索引或业务数据。执行前应确认已有库的字段定义与初始化脚本一致。
+
+| 表 | 用途 | 关键约束 |
+| --- | --- | --- |
+| `financial_family` | 家庭账本与可见权限 | 同租户所有者唯一；允许查看其他成员不代表允许编辑 |
+| `financial_member` | 家庭成员与登录用户关联 | 同租户系统用户唯一；`user_id=NULL` 表示未关联登录用户 |
+| `financial_category` | 家庭五类资产配置 | 同租户、家庭的分类编码唯一 |
+| `financial_account` | 账户当前状态 | `version` 用于并发校验；`deleted` 为逻辑删除标记 |
+| `financial_update_batch` | 一次提交与汇总结果 | 同租户、家庭的 `request_id` 唯一；`request_hash` 校验提交内容 |
+| `financial_update_record` | 每次账户变动明细 | 保存操作时的账户名称、前后余额及来源；删除账户不删除历史 |
+| `financial_snapshot` | 家庭及成员每日快照 | 同租户、家庭、成员和日期唯一；`member_id=0` 表示家庭汇总 |
+
+字段口径：
+
+- 金额单位均为元。账户余额、前后余额为 `DECIMAL(18,2)`，单次变化为 `DECIMAL(19,2)`，汇总及快照为 `DECIMAL(24,2)`。余额 `NULL` 表示待填写，`0.00` 表示明确为零；计算变化时 `NULL` 按零处理。负债以正数保存，净资产允许为负数。
+- `data_date` 是账户数据日期，`update_date` / `snapshot_date` 是记账日期，`created_at` 是操作时间，三者分别维护。月度比较按快照记账日期计算，不按导入或手动操作时间计算。
+- 分类编码固定为 `liquid`、`fixed`、`investment`、`receivable`、`liability`；分类名称可以修改。系统账户模板为 `bank`、`card`、`cash`、`alipay`、`wechat`、`ecny`，自定义账户的 `template_code` 为 `NULL`。
+- `fund_bucket` 为 `liquid`、`stable`、`long_term`、`insurance` 或 `NULL`；负债不分配资金用途。`insurance_type` 仅用于保险用途账户，可取意外、医疗、重疾、寿险、其他。
+- 账户和明细的 `source_type`、批次的 `source` 默认值均为 `manual`；`import` 表示导入来源，来源由服务端维护。币种 `currency` 当前仅使用 `CNY`。
+- `monthly.latestDate`、`monthly.baselineDate`、`monthly.fallback`、`monthly.firstRecord` 及月度变化金额为接口计算字段，无需新增数据库列。最近日期取可见成员的最新快照；基准取该快照所在月份之前的最后一次快照；最近日期早于本月时启用回退提示。
+
+后续调整字段时，同时更新初始化脚本、单独的已有库升级脚本、服务端读写与校验、前端接口类型及本节口径，避免只修改建表脚本而遗漏已有数据库。
 
 ## 演示数据
 
