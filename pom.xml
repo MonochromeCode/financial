@@ -10,6 +10,7 @@
     <modules>
         <module>financial-dependencies</module>
         <module>financial-framework</module>
+        <module>financial-module-assets</module>
         <!-- Server 主项目 -->
         <module>financial-server</module>
         <!-- 各种 module 拓展 -->

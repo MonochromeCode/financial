@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.financial.module.assets.dal.mysql.AssetMapper">
+    <sql id="accountQuery">
+        SELECT id, member_id AS memberId, category_code AS categoryCode, name, template_code AS templateCode,
+        balance, fund_bucket AS fundBucket, insurance_type AS insuranceType, data_date AS dataDate,
+        sort_order AS sortOrder, remark, version, source_type AS sourceType, updated_at AS updatedAt
+        FROM financial_account WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND deleted=0
+    </sql>
+
+    <sql id="historyScope">
+        WHERE r.tenant_id=#{tenantId} AND r.family_id=#{familyId}
+          AND r.member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        <if test="category != null">AND r.category_code=#{category}</if>
+        <if test="start != null">AND r.data_date&gt;=#{start}</if>
+        <if test="end != null">AND r.data_date&lt;=#{end}</if>
+    </sql>
+
+    <select id="selectFamily" resultType="map">
+        SELECT f.id, f.name, f.owner_user_id AS ownerUserId, f.allow_view_others AS allowViewOthers,
+        m.id AS currentMemberId
+        FROM financial_family f JOIN financial_member m ON m.family_id=f.id AND m.tenant_id=f.tenant_id
+        WHERE f.tenant_id=#{tenantId} AND m.user_id=#{userId}
+        <if test="lock == true">FOR UPDATE</if>
+    </select>
+
+    <select id="selectMembers" resultType="map">
+        SELECT id, user_id AS userId, display_name AS displayName, role, sort_order AS sortOrder
+        FROM financial_member WHERE tenant_id=#{tenantId} AND family_id=#{familyId} ORDER BY sort_order,id
+    </select>
+
+    <select id="selectCategories" resultType="map">
+        SELECT id, code, name, icon, color, description, sort_order AS sortOrder, enabled
+        FROM financial_category WHERE tenant_id=#{tenantId} AND family_id=#{familyId} ORDER BY sort_order,id
+    </select>
+
+    <insert id="insertFamily" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO financial_family(tenant_id,name,owner_user_id,allow_view_others)
+        VALUES(#{tenantId},#{name},#{userId},#{allow})
+    </insert>
+
+    <insert id="insertOwner" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO financial_member(tenant_id,family_id,user_id,display_name,role)
+        VALUES(#{tenantId},#{familyId},#{userId},'我','owner')
+    </insert>
+
+    <insert id="insertCategory" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO financial_category(tenant_id,family_id,code,name,icon,color,description,sort_order)
+        VALUES(#{tenantId},#{familyId},#{code},#{name},#{icon},#{color},#{description},#{sort})
+    </insert>
+
+    <update id="updateFamily">
+        UPDATE financial_family SET name=#{name},allow_view_others=#{allow}
+        WHERE tenant_id=#{tenantId} AND id=#{familyId}
+    </update>
+
+    <select id="selectEnabledUser" resultType="map">
+        SELECT id FROM system_users WHERE tenant_id=#{tenantId} AND id=#{userId} AND deleted=0 AND status=0
+    </select>
+
+    <insert id="insertMember" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO financial_member(tenant_id,family_id,user_id,display_name,sort_order)
+        VALUES(#{tenantId},#{familyId},#{userId},#{name},#{sort})
+    </insert>
+
+    <update id="updateMember">
+        UPDATE financial_member SET user_id=#{userId},display_name=#{name},sort_order=#{sort}
+        WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND id=#{id}
+    </update>
+
+    <select id="selectMemberAccount" resultType="map">
+        SELECT id FROM financial_account WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND member_id=#{memberId} LIMIT 1
+    </select>
+
+    <select id="selectMemberSnapshot" resultType="map">
+        SELECT id FROM financial_snapshot WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND member_id=#{memberId} LIMIT 1
+    </select>
+
+    <select id="selectMemberRecord" resultType="map">
+        SELECT id FROM financial_update_record WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND member_id=#{memberId} LIMIT 1
+    </select>
+
+    <delete id="deleteMember">
+        DELETE FROM financial_member WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND id=#{memberId}
+    </delete>
+
+    <select id="selectCategory" resultType="map">
+        SELECT code FROM financial_category WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND id=#{id}
+    </select>
+
+    <select id="selectCategoryAccount" resultType="map">
+        SELECT id FROM financial_account WHERE tenant_id=#{tenantId} AND family_id=#{familyId}
+        AND category_code=#{code} AND deleted=0 LIMIT 1
+    </select>
+
+    <update id="updateCategory">
+        UPDATE financial_category SET name=#{name},icon=#{icon},color=#{color},description=#{description},
+        sort_order=#{sort},enabled=#{enabled} WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND id=#{id}
+    </update>
+
+    <select id="selectAccounts" resultType="map">
+        <include refid="accountQuery"/>
+        AND member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        <if test="category != null">AND category_code=#{category}</if>
+        ORDER BY sort_order,id
+    </select>
+
+    <select id="selectAccountHistory" resultType="map">
+        SELECT r.id,r.account_id AS accountId,r.member_id AS memberId,r.category_code AS categoryCode,
+        r.account_name AS accountName,r.current_balance AS currentBalance,r.operation,b.update_date AS date
+        FROM financial_update_record r
+        JOIN financial_update_batch b ON b.id=r.batch_id AND b.tenant_id=r.tenant_id AND b.family_id=r.family_id
+        WHERE r.tenant_id=#{tenantId} AND r.family_id=#{familyId}
+        AND r.account_id IN (
+        SELECT account_id FROM financial_update_record
+        WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        )
+        ORDER BY b.update_date,r.id
+    </select>
+
+    <select id="selectSnapshotDates" resultType="map">
+        SELECT DISTINCT snapshot_date AS date FROM financial_snapshot
+        WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        ORDER BY snapshot_date
+    </select>
+
+    <select id="selectExportAccounts" resultType="map">
+        <include refid="accountQuery"/>
+        AND member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        <if test="excludeFixed == true">AND category_code&lt;&gt;'fixed'</if>
+        ORDER BY member_id,sort_order,id
+    </select>
+
+    <select id="selectExportHistory" resultType="map">
+        SELECT r.id,r.account_id AS accountId,r.member_id AS memberId,r.category_code AS categoryCode,
+        r.account_name AS accountName,r.previous_balance AS previousBalance,
+        r.current_balance AS currentBalance,r.change_amount AS changeAmount,r.operation,
+        r.source_type AS sourceType,r.data_date AS dataDate,r.created_at AS createdAt,
+        r.operator_user_id AS operatorUserId,u.nickname AS operatorName
+        FROM financial_update_record r
+        LEFT JOIN system_users u ON u.id=r.operator_user_id AND u.tenant_id=r.tenant_id
+        WHERE r.tenant_id=#{tenantId} AND r.family_id=#{familyId} AND r.member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        <if test="excludeFixed == true">AND r.category_code&lt;&gt;'fixed'</if>
+        ORDER BY r.created_at,r.id
+    </select>
+
+    <select id="selectSnapshots" resultType="map">
+        SELECT snapshot_date AS date,SUM(liquid_amount) AS liquid,SUM(fixed_amount) AS fixed,
+        SUM(investment_amount) AS investment,SUM(receivable_amount) AS receivable,SUM(liability_amount) AS liability
+        FROM financial_snapshot WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+        <if test="start != null">AND snapshot_date&gt;=#{start}</if>
+        <if test="end != null">AND snapshot_date&lt;=#{end}</if>
+        GROUP BY snapshot_date ORDER BY snapshot_date
+    </select>
+
+    <select id="selectVisibleAccounts" resultType="map">
+        <include refid="accountQuery"/>
+        AND member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+    </select>
+
+    <select id="selectLatestUpdate" resultType="map">
+        SELECT MAX(created_at) AS updatedAt FROM financial_update_record
+        WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND member_id IN <foreach collection="members" item="memberId" open="(" separator="," close=")">#{memberId}</foreach>
+    </select>
+
+    <select id="selectHistory" resultType="map">
+        SELECT r.id,r.batch_id AS batchId,r.account_id AS accountId,r.member_id AS memberId,
+        r.category_code AS categoryCode,r.account_name AS accountName,r.previous_balance AS previousBalance,
+        r.current_balance AS currentBalance,r.change_amount AS changeAmount,r.operation,r.source_type AS sourceType,
+        r.operator_user_id AS operatorUserId,r.data_date AS dataDate,r.created_at AS createdAt,
+        u.nickname AS operatorName
+        FROM financial_update_record r LEFT JOIN system_users u ON u.id=r.operator_user_id AND u.tenant_id=r.tenant_id
+        <include refid="historyScope"/>
+        ORDER BY r.id DESC LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countHistory" resultType="map">
+        SELECT COUNT(*) AS total FROM financial_update_record r
+        <include refid="historyScope"/>
+    </select>
+
+    <select id="selectBatch" resultType="map">
+        SELECT id,operator_user_id AS operatorUserId,request_hash AS requestHash FROM financial_update_batch
+        WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND request_id=#{requestId}
+    </select>
+
+    <select id="selectLatestSnapshot" resultType="map">
+        SELECT MAX(snapshot_date) AS date FROM financial_snapshot WHERE tenant_id=#{tenantId} AND family_id=#{familyId}
+    </select>
+
+    <select id="selectFamilyAccounts" resultType="map">
+        <include refid="accountQuery"/>
+    </select>
+
+    <insert id="insertBatch" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO financial_update_batch(tenant_id,family_id,operator_user_id,request_id,request_hash,update_date)
+        VALUES(#{tenantId},#{familyId},#{userId},#{requestId},#{hash},#{date})
+    </insert>
+
+    <insert id="insertAccount" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO financial_account(tenant_id,family_id,member_id,category_code,name,template_code,balance,
+        fund_bucket,insurance_type,data_date,sort_order,remark,creator,updater)
+        VALUES(#{tenantId},#{familyId},#{member},#{category},#{name},#{template},#{balance},#{bucket},#{insurance},#{date},#{sort},#{remark},#{userId},#{userId})
+    </insert>
+
+    <update id="updateAccount">
+        UPDATE financial_account SET member_id=#{member},category_code=#{category},name=#{name},balance=#{balance},
+        fund_bucket=#{bucket},insurance_type=#{insurance},data_date=#{date},sort_order=#{sort},remark=#{remark},
+        updater=#{userId},deleted=#{deleted},version=version+1
+        WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND id=#{id}
+    </update>
+
+    <insert id="insertRecord" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO financial_update_record(tenant_id,family_id,batch_id,account_id,member_id,category_code,account_name,
+        previous_balance,current_balance,change_amount,operation,operator_user_id,data_date)
+        VALUES(#{tenantId},#{familyId},#{batch},#{account},#{member},#{category},#{name},#{previous},#{current},#{delta},#{operation},#{userId},#{date})
+    </insert>
+
+    <select id="selectDuplicateTemplate" resultType="map">
+        SELECT template_code FROM financial_account WHERE tenant_id=#{tenantId} AND family_id=#{familyId}
+        AND deleted=0 AND template_code IS NOT NULL GROUP BY member_id,template_code HAVING COUNT(*)>1 LIMIT 1
+    </select>
+
+    <update id="updateBatchTotals">
+        UPDATE financial_update_batch SET total_assets=#{total},total_liabilities=#{liability},net_assets=#{net}
+        WHERE tenant_id=#{tenantId} AND family_id=#{familyId} AND id=#{id}
+    </update>
+
+    <update id="upsertSnapshot">
+        INSERT INTO financial_snapshot(tenant_id,family_id,member_id,snapshot_date,liquid_amount,fixed_amount,
+        investment_amount,receivable_amount,liability_amount,total_assets,net_assets)
+        VALUES(#{tenantId},#{familyId},#{memberId},#{date},#{liquid},#{fixed},#{investment},#{receivable},#{liability},#{total},#{net})
+        ON DUPLICATE KEY UPDATE liquid_amount=#{liquid},fixed_amount=#{fixed},investment_amount=#{investment},
+        receivable_amount=#{receivable},liability_amount=#{liability},total_assets=#{total},net_assets=#{net},updated_at=CURRENT_TIMESTAMP
+    </update>
+</mapper>

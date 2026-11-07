@@ -1,4 +1,4 @@
-package cn.iocoder.financial.server.module.assets.service;
+package cn.iocoder.financial.module.assets.service;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
@@ -13,17 +13,15 @@ import java.util.List;
 import java.util.Map;
 
 public final class AssetWorkbook {
-    private static final Map<String, String> BUCKETS = Map.of(
-            "liquid", "活钱", "stable", "稳健资金", "long_term", "长期资金", "insurance", "保险保障");
-    private static final Map<String, String> OPERATIONS = Map.of("create", "新增", "update", "修改", "delete", "删除");
-
     private AssetWorkbook() {
     }
 
     public static byte[] write(String familyName, String memberScope, boolean excludeFixed, boolean hidden,
                                Map<Long, String> members, Map<String, String> categories,
                                List<Map<String, Object>> accounts, Map<String, Object> summary,
-                               List<Map<String, Object>> history) throws IOException {
+                               List<Map<String, Object>> history, Map<String, String> buckets,
+                               Map<String, String> insuranceTypes, Map<String, String> operations,
+                               Map<String, String> sources) throws IOException {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Font headingFont = workbook.createFont();
             headingFont.setBold(true);
@@ -58,9 +56,9 @@ public final class AssetWorkbook {
                 row(details, money, members.getOrDefault(((Number) account.get("memberId")).longValue(), "家庭成员"),
                         categories.getOrDefault(category, category), text(account.get("name")),
                         amount(account.get("balance"), hidden),
-                        "liability".equals(category) ? "不适用" : BUCKETS.getOrDefault(bucket, "未分配"),
-                        text(account.get("insuranceType")), text(account.get("dataDate")),
-                        "import".equals(account.get("sourceType")) ? "Excel 导入" : "手动更新", text(account.get("remark")));
+                        "liability".equals(category) ? "不适用" : bucket.isEmpty() ? "未分配" : buckets.getOrDefault(bucket, bucket),
+                        label(insuranceTypes, account.get("insuranceType")), text(account.get("dataDate")),
+                        label(sources, account.get("sourceType")), text(account.get("remark")));
             }
             details.setColumnWidth(2, 28 * 256);
             details.setColumnWidth(8, 45 * 256);
@@ -80,8 +78,8 @@ public final class AssetWorkbook {
                         members.getOrDefault(((Number) record.get("memberId")).longValue(), "家庭成员"),
                         categories.getOrDefault(category, category), text(record.get("accountName")),
                         amount(record.get("previousBalance"), hidden), amount(record.get("currentBalance"), hidden),
-                        amount(record.get("changeAmount"), hidden), OPERATIONS.getOrDefault(operation, operation),
-                        "import".equals(record.get("sourceType")) ? "Excel 导入" : "手动更新",
+                        amount(record.get("changeAmount"), hidden), operations.getOrDefault(operation, operation),
+                        label(sources, record.get("sourceType")),
                         text(record.get("dataDate")), text(record.get("createdAt")),
                         text(record.get("operatorName")), text(record.get("operatorUserId")));
             }
@@ -134,5 +132,10 @@ public final class AssetWorkbook {
 
     private static String text(Object value) {
         return value == null ? "" : value.toString();
+    }
+
+    private static String label(Map<String, String> labels, Object value) {
+        String code = text(value);
+        return labels.getOrDefault(code, code);
     }
 }

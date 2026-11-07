@@ -1,4 +1,4 @@
-package cn.iocoder.financial.server.module.assets.controller.admin.vo;
+package cn.iocoder.financial.module.assets.controller.admin.vo;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -60,9 +60,9 @@ public final class AssetRequests {
         private String templateCode;
         @DecimalMin("0") @Digits(integer = 16, fraction = 2)
         private BigDecimal balance;
-        @Pattern(regexp = "liquid|stable|long_term|insurance")
+        @Size(max = 16)
         private String fundBucket;
-        @Pattern(regexp = "意外|医疗|重疾|寿险|其他")
+        @Size(max = 20)
         private String insuranceType;
         @NotNull @PastOrPresent
         private LocalDate dataDate;

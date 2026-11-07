@@ -36,7 +36,7 @@
 ## 已实现功能
 
 - 家庭总览：总资产、净资产、总负债、负债率，以及月度资产变化。
-- 月度对比：通过“查看记录金额”展开截至日期和基准日期的总资产、总负债、净资产；本月无记录时回退到最近有记录月份并标注年月，零变化显示“0.00 元（持平）”。
+- 历史金额明细：“查看记录金额”弹窗按全部历史记账日期展示，以银行卡、现金、支付宝等账户为列，并列出总资产、总负债、净资产；同日取最后余额，未修改账户沿用上次余额，遵循成员及固定资产筛选。
 - 资产组成桑基图：净资产/总负债 → 总资产 → 资产分类 → 具体账户，支持金额/比例切换、隐藏金额、成员筛选、整图平移缩放、放大查看和完整图表 PNG 下载。
 - 五类账户：流动资金、固定资产、投资理财、应收款、负债。
 - 四笔钱配置：活钱、稳健资金、长期资金、保险保障。
@@ -59,7 +59,7 @@
 | --- | --- |
 | 运行环境 | JDK 25、Maven 3.9+ |
 | 后端框架 | Spring Boot 4.1.2、Spring Security |
-| 数据存储 | MySQL 8、Redis、MyBatis Plus / Spring JDBC |
+| 数据存储 | MySQL 8、Redis、MyBatis Plus / Mapper XML |
 | 前端 | Vue 3、TypeScript、Vben 5、Ant Design Vue、ECharts |
 
 ```text
@@ -68,14 +68,21 @@ financial/
 ├── financial-framework/          公共组件与 Spring Boot starters
 ├── financial-module-system/      用户、角色、权限、租户等系统能力
 ├── financial-module-infra/       基础设施能力
-├── financial-server/             启动入口与业务模块统一管理
-│   └── src/main/java/cn/iocoder/financial/server/module/
-│       └── assets/               家庭资产业务
+├── financial-module-assets/      家庭资产、业务校验、金额计算、导出
+│   ├── src/main/java/cn/iocoder/financial/module/assets/
+│   │   ├── controller/admin/     HTTP 接口与请求校验
+│   │   ├── service/              业务流程、权限、字典、计算与导出
+│   │   ├── enums/                固定计算口径与字典类型
+│   │   └── dal/                  租户参数封装与 Mapper 接口
+│   └── src/main/resources/mapper/assets/AssetMapper.xml
+├── financial-server/             启动入口、配置与模块装配
 ├── script/sql/household-assets.sql
 └── script/seed-household-demo.ps1
 ```
 
-业务小模块按 `server.module.<业务名>` 划分，每个包内组织 `controller/admin`、`service`、`dal`。assets 已合并到 server，由 server 统一编译和打包。
+`financial-server` 负责启动和模块装配，资产业务独立为 `financial-module-assets`。Service 调用具名 Repository 方法，SQL 集中在 Mapper XML，所有资产读写显式绑定当前租户和家庭范围。金额汇总与月度比较由 `AssetAmounts` 处理，历史状态还原由 `AssetAccountSnapshots` 处理。
+
+账户模板、资金用途、保险类型、操作类型、来源及新账本的分类名称统一使用系统字典；前端通过 `/finance/assets/context` 的 `options` 读取，与后端校验、Excel 导出共享配置。已有家庭分类仍在家庭设置中单独维护。
 
 ## 本地启动
 
@@ -96,9 +103,10 @@ CREATE DATABASE financial CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE financial;
 SOURCE sql/mysql/ruoyi-vue-pro.sql;
 SOURCE script/sql/household-assets.sql;
+SOURCE script/sql/household-assets-dictionaries.sql;
 ```
 
-基础 SQL 含建表和初始化数据，**仅在新建空数据库中执行**。家庭资产 SQL 创建七张 `financial_*` 表，可重复执行。
+基础 SQL 含建表和初始化数据，**仅在新建空数据库中执行**。家庭资产 SQL 创建七张 `financial_*` 表，可重复执行。已有库升级时执行 `script/sql/household-assets-dictionaries.sql` 补齐资产字典，不覆盖已有字典配置和家庭数据。
 
 ### 3. 配置并启动后端
 

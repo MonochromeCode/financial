@@ -1,8 +1,9 @@
-package cn.iocoder.financial.server.module.assets.controller.admin;
+package cn.iocoder.financial.module.assets.controller.admin;
 
 import cn.iocoder.financial.framework.common.pojo.CommonResult;
-import cn.iocoder.financial.server.module.assets.controller.admin.vo.AssetRequests.*;
-import cn.iocoder.financial.server.module.assets.service.AssetService;
+import cn.iocoder.financial.module.assets.controller.admin.vo.AssetRequests.*;
+import cn.iocoder.financial.module.assets.service.AssetService;
+import cn.iocoder.financial.module.assets.service.AssetFamilyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,9 +31,11 @@ import static cn.iocoder.financial.framework.common.pojo.CommonResult.success;
 @PreAuthorize("isAuthenticated()")
 public class AssetController {
     private final AssetService service;
+    private final AssetFamilyService familyService;
 
-    public AssetController(AssetService service) {
+    public AssetController(AssetService service, AssetFamilyService familyService) {
         this.service = service;
+        this.familyService = familyService;
     }
 
     private Object decimalStrings(Object value) {
@@ -53,40 +56,40 @@ public class AssetController {
     @GetMapping("/context")
     @Operation(summary = "获取当前用户的家庭、成员和资产分类配置")
     public CommonResult<?> context() {
-        return success(decimalStrings(service.context()));
+        return success(decimalStrings(familyService.context()));
     }
 
     @PostMapping("/initialize")
     @Operation(summary = "建立家庭账本")
     public CommonResult<Long> initialize(@Valid @RequestBody FamilySave request) {
-        return success(service.initialize(request));
+        return success(familyService.initialize(request));
     }
 
     @PutMapping("/family")
     @Operation(summary = "配置家庭权限")
     public CommonResult<Boolean> family(@Valid @RequestBody FamilySave request) {
-        service.saveFamily(request);
+        familyService.saveFamily(request);
         return success(true);
     }
 
     @PutMapping("/member")
     @Operation(summary = "新增或修改家庭成员")
     public CommonResult<Boolean> member(@Valid @RequestBody MemberSave request) {
-        service.saveMember(request);
+        familyService.saveMember(request);
         return success(true);
     }
 
     @DeleteMapping("/member")
     @Operation(summary = "删除未关联资产和历史的家庭成员")
     public CommonResult<Boolean> deleteMember(@RequestParam long id) {
-        service.deleteMember(id);
+        familyService.deleteMember(id);
         return success(true);
     }
 
     @PutMapping("/category")
     @Operation(summary = "配置资产分类")
     public CommonResult<Boolean> category(@Valid @RequestBody CategorySave request) {
-        service.saveCategory(request);
+        familyService.saveCategory(request);
         return success(true);
     }
 
@@ -102,6 +105,13 @@ public class AssetController {
     public CommonResult<?> dashboard(@RequestParam(required = false) Long memberId,
                                                        @RequestParam(defaultValue = "false") boolean excludeFixed) {
         return success(decimalStrings(service.dashboard(memberId, excludeFixed)));
+    }
+
+    @GetMapping("/account-snapshots")
+    @Operation(summary = "按历史记账日期查看可见账户的逐项余额")
+    public CommonResult<?> accountSnapshots(@RequestParam(required = false) Long memberId,
+            @RequestParam(defaultValue = "false") boolean excludeFixed) {
+        return success(decimalStrings(service.accountSnapshots(memberId, excludeFixed)));
     }
 
     @GetMapping("/export-excel")
