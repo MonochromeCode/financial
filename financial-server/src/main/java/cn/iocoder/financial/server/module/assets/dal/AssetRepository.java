@@ -26,7 +26,10 @@ public class AssetRepository {
     }
 
     public List<Map<String, Object>> list(String sql, Map<String, ?> values) {
-        return jdbc.queryForList(sql, params(values));
+        List<Map<String, Object>> rows = jdbc.queryForList(sql, params(values));
+        rows.forEach(row -> row.replaceAll((key, value) -> value instanceof java.sql.Date date
+                ? date.toLocalDate().toString() : value));
+        return rows;
     }
 
     public Map<String, Object> one(String sql, Map<String, ?> values) {

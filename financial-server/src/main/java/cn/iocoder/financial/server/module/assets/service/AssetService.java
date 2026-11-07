@@ -313,6 +313,30 @@ public class AssetService {
         return snapshots(scope, visible(scope, memberId), excludeFixed, start, end);
     }
 
+    private Map<String, Object> monthlyChanges(List<Map<String, Object>> snapshots, LocalDate today) {
+        Map<String, Object> latest = snapshots.isEmpty() ? null : snapshots.getLast();
+        LocalDate latestDate = latest == null ? null : LocalDate.parse(latest.get("date").toString());
+        LocalDate comparisonMonth = (latestDate == null ? today : latestDate).withDayOfMonth(1);
+        Map<String, Object> baseline = snapshots.stream()
+                .filter(row -> LocalDate.parse(row.get("date").toString()).isBefore(comparisonMonth))
+                .reduce((previous, current) -> current).orElse(null);
+        Map<String, Object> changes = new LinkedHashMap<>();
+        for (String key : List.of("totalAssets", "totalLiabilities", "netAssets")) {
+            changes.put(key, amount(latest == null ? null : latest.get(key))
+                    .subtract(amount(baseline == null ? null : baseline.get(key))));
+        }
+        Map<?, ?> latestAmounts = latest == null ? Map.of() : (Map<?, ?>) latest.get("amounts");
+        Map<?, ?> baselineAmounts = baseline == null ? Map.of() : (Map<?, ?>) baseline.get("amounts");
+        Map<String, BigDecimal> categoryChanges = new LinkedHashMap<>();
+        CODES.forEach(code -> categoryChanges.put(code, amount(latestAmounts.get(code)).subtract(amount(baselineAmounts.get(code)))));
+        changes.put("categories", categoryChanges);
+        changes.put("firstRecord", baseline == null);
+        changes.put("baselineDate", baseline == null ? null : baseline.get("date"));
+        changes.put("latestDate", latestDate == null ? null : latestDate.toString());
+        changes.put("fallback", latestDate != null && latestDate.isBefore(today.withDayOfMonth(1)));
+        return changes;
+    }
+
     public Map<String, Object> dashboard(Long memberId, boolean excludeFixed) {
         Scope scope = scope(false);
         List<Long> members = visible(scope, memberId);
@@ -325,20 +349,8 @@ public class AssetService {
                 WHERE tenant_id=:tenantId AND family_id=:familyId AND member_id IN (:members)
                 """, params);
         overview.put("updatedAt", latest == null ? null : latest.get("updatedAt"));
-        LocalDate currentMonth = LocalDate.now().withDayOfMonth(1);
-        List<Map<String, Object>> previous = snapshots(scope, members, excludeFixed,
-                currentMonth.minusMonths(1), currentMonth.minusDays(1));
-        Map<String, Object> baseline = previous.isEmpty() ? null : previous.getLast();
-        Map<String, Object> changes = new LinkedHashMap<>();
-        for (String key : List.of("totalAssets", "totalLiabilities", "netAssets")) {
-            changes.put(key, amount(overview.get(key)).subtract(baseline == null ? BigDecimal.ZERO : amount(baseline.get(key))));
-        }
-        Map<String, BigDecimal> categoryChanges = new LinkedHashMap<>();
-        CODES.forEach(code -> categoryChanges.put(code, totals.get(code).subtract(baseline == null ? BigDecimal.ZERO
-                : amount(((Map<?, ?>) baseline.get("amounts")).get(code)))));
-        changes.put("categories", categoryChanges);
-        changes.put("firstRecord", baseline == null);
-        changes.put("baselineDate", baseline == null ? null : baseline.get("date"));
+        List<Map<String, Object>> snapshots = snapshots(scope, members, excludeFixed, null, null);
+        Map<String, Object> changes = monthlyChanges(snapshots, LocalDate.now());
         Map<String, BigDecimal> buckets = new LinkedHashMap<>();
         List.of("liquid", "stable", "long_term", "insurance", "unassigned").forEach(key -> buckets.put(key, amount(null)));
         Set<String> insuranceTypes = new LinkedHashSet<>();
@@ -367,7 +379,7 @@ public class AssetService {
         }
         return values("overview", overview, "monthly", changes, "composition", composition, "buckets", buckets,
                 "insuranceTypes", insuranceTypes, "accountCount", accounts.size(),
-                "trends", snapshots(scope, members, excludeFixed, null, null),
+                "trends", snapshots,
                 "records", history(memberId, null, null, null, 1, 6));
     }
 
