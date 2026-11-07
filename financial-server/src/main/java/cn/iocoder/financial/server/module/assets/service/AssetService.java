@@ -316,6 +316,8 @@ public class AssetService {
     private Map<String, Object> monthlyChanges(List<Map<String, Object>> snapshots, LocalDate today) {
         Map<String, Object> latest = snapshots.isEmpty() ? null : snapshots.getLast();
         LocalDate latestDate = latest == null ? null : LocalDate.parse(latest.get("date").toString());
+        LocalDate currentMonth = today.withDayOfMonth(1);
+        boolean fallback = latestDate != null && latestDate.isBefore(currentMonth);
         LocalDate comparisonMonth = (latestDate == null ? today : latestDate).withDayOfMonth(1);
         Map<String, Object> baseline = snapshots.stream()
                 .filter(row -> LocalDate.parse(row.get("date").toString()).isBefore(comparisonMonth))
@@ -333,7 +335,7 @@ public class AssetService {
         changes.put("firstRecord", baseline == null);
         changes.put("baselineDate", baseline == null ? null : baseline.get("date"));
         changes.put("latestDate", latestDate == null ? null : latestDate.toString());
-        changes.put("fallback", latestDate != null && latestDate.isBefore(today.withDayOfMonth(1)));
+        changes.put("fallback", fallback);
         return changes;
     }
 
@@ -377,7 +379,7 @@ public class AssetService {
                     : totals.get(code).multiply(BigDecimal.valueOf(100)).divide(total, 2, RoundingMode.HALF_UP));
             composition.add(item);
         }
-        return values("overview", overview, "monthly", changes, "composition", composition, "buckets", buckets,
+        return values("overview", overview, "accounts", accounts, "monthly", changes, "composition", composition, "buckets", buckets,
                 "insuranceTypes", insuranceTypes, "accountCount", accounts.size(),
                 "trends", snapshots,
                 "records", history(memberId, null, null, null, 1, 6));
