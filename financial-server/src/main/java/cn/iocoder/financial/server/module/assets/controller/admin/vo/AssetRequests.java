@@ -1,4 +1,4 @@
-package cn.iocoder.financial.module.assets.controller.admin.vo;
+package cn.iocoder.financial.server.module.assets.controller.admin.vo;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;

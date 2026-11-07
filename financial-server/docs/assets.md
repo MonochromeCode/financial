@@ -1,6 +1,6 @@
 # 家庭资产记账
 
-这是家庭资产负债表模块，不包含日常消费流水。后端包名为 `cn.iocoder.financial.module.assets`，前端位于 Vben 工程 `apps/web-antd/src/views/finance`。
+这是家庭资产负债表业务模块，不包含日常消费流水。代码由 `financial-server` 统一编译和打包，后端包名为 `cn.iocoder.financial.server.module.assets`，前端位于 Vben 工程 `apps/web-antd/src/views/finance`。
 
 ## 部署
 

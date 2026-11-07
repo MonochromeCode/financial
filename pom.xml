@@ -15,7 +15,6 @@
         <!-- 各种 module 拓展 -->
         <module>financial-module-system</module>
         <module>financial-module-infra</module>
-        <module>financial-module-assets</module>
 <!--        <module>financial-module-member</module>-->
 <!--        <module>financial-module-bpm</module>-->
 <!--        <module>financial-module-report</module>-->

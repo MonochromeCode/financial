@@ -14,18 +14,12 @@
 
     <name>${project.artifactId}</name>
     <description>
-        后端 Server 的主项目，通过引入需要 financial-module-xxx 的依赖，
-        从而实现提供 RESTful API 给 yudao-ui-admin、yudao-ui-user 等前端项目。
-        本质上来说，它就是个空壳（容器）！
+        理财有数后端启动与业务主模块，按 server.module 下的业务包统一管理各个小模块，
+        并依赖系统管理、基础设施模块提供公共能力和 RESTful API。
     </description>
     <url>https://github.com/YunaiV/ruoyi-vue-pro</url>
 
     <dependencies>
-        <dependency>
-            <groupId>cn.iocoder.boot</groupId>
-            <artifactId>financial-module-assets</artifactId>
-            <version>${revision}</version>
-        </dependency>
         <dependency>
             <groupId>cn.iocoder.boot</groupId>
             <artifactId>financial-module-system</artifactId>

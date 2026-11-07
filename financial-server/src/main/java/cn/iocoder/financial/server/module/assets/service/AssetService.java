@@ -1,11 +1,11 @@
-package cn.iocoder.financial.module.assets.service;
+package cn.iocoder.financial.server.module.assets.service;
 
 import cn.hutool.crypto.digest.DigestUtil;
 import cn.iocoder.financial.framework.common.exception.ServiceException;
 import cn.iocoder.financial.framework.security.core.util.SecurityFrameworkUtils;
 import cn.iocoder.financial.framework.tenant.core.context.TenantContextHolder;
-import cn.iocoder.financial.module.assets.controller.admin.vo.AssetRequests.*;
-import cn.iocoder.financial.module.assets.dal.AssetRepository;
+import cn.iocoder.financial.server.module.assets.controller.admin.vo.AssetRequests.*;
+import cn.iocoder.financial.server.module.assets.dal.AssetRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;

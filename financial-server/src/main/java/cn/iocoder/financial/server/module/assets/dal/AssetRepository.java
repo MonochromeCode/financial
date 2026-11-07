@@ -1,4 +1,4 @@
-package cn.iocoder.financial.module.assets.dal;
+package cn.iocoder.financial.server.module.assets.dal;
 
 import cn.iocoder.financial.framework.tenant.core.context.TenantContextHolder;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;

@@ -1,8 +1,8 @@
-package cn.iocoder.financial.module.assets.controller.admin;
+package cn.iocoder.financial.server.module.assets.controller.admin;
 
 import cn.iocoder.financial.framework.common.pojo.CommonResult;
-import cn.iocoder.financial.module.assets.controller.admin.vo.AssetRequests.*;
-import cn.iocoder.financial.module.assets.service.AssetService;
+import cn.iocoder.financial.server.module.assets.controller.admin.vo.AssetRequests.*;
+import cn.iocoder.financial.server.module.assets.service.AssetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
