@@ -8,7 +8,7 @@
 
 ```text
 server/
-├── YudaoServerApplication.java
+├── FinancialServerApplication.java
 ├── controller/
 └── module/
     └── assets/

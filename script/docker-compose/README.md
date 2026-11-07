@@ -99,7 +99,7 @@ docker compose ps
 docker compose logs -f financial-server
 ```
 
-首次启动时 MySQL 需要导入 SQL，`financial-server` 会等到 MySQL、Redis 健康检查通过后再启动。日志出现 `Started YudaoServerApplication` 后访问：
+首次启动时 MySQL 需要导入 SQL，`financial-server` 会等到 MySQL、Redis 健康检查通过后再启动。日志出现 `Started FinancialServerApplication` 后访问：
 
 - 管理后台：http://localhost:8080 （`WEB_PORT` 修改后对应调整）
 
