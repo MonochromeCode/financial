@@ -23,7 +23,7 @@ public interface AssetService {
     AssetAccountSnapshotsRespVO accountSnapshots(Long memberId, boolean excludeFixed);
 
     /**
-     * 导出可见范围的汇总、当前账户和全部历史
+     * 导出可见范围的汇总、历史日期账户余额和全部变更记录
      */
     byte[] exportExcel(Long memberId, boolean excludeFixed, boolean hidden) throws IOException;
 

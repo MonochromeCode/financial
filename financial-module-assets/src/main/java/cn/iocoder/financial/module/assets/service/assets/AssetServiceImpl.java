@@ -55,10 +55,14 @@ public class AssetServiceImpl implements AssetService {
     public AssetAccountSnapshotsRespVO accountSnapshots(Long memberId, boolean excludeFixed) {
         Scope scope = access.scope(false);
         List<Long> members = access.visible(scope, memberId);
+        return AssetConvert.convert(accountSnapshots(scope, members, excludeFixed), AssetAccountSnapshotsRespVO.class);
+    }
+
+    private Map<String, Object> accountSnapshots(Scope scope, List<Long> members, boolean excludeFixed) {
         List<Map<String, Object>> records = repository.selectAccountHistory(Map.of("familyId", scope.familyId(), "members", members));
         List<String> dates = repository.selectSnapshotDates(Map.of("familyId", scope.familyId(), "members", members)).stream()
                 .map(row -> row.get("date").toString()).toList();
-        return AssetConvert.convert(AssetAccountSnapshots.build(records, dates, new HashSet<>(members), excludeFixed), AssetAccountSnapshotsRespVO.class);
+        return AssetAccountSnapshots.build(records, dates, new HashSet<>(members), excludeFixed);
     }
 
     @Override
@@ -74,8 +78,8 @@ public class AssetServiceImpl implements AssetService {
                 .forEach(category -> categories.put(category.get("code").toString(), category.get("name").toString()));
         List<Map<String, Object>> history = repository.selectExportHistory(Map.of("familyId", scope.familyId(), "members", visibleMembers, "excludeFixed", excludeFixed));
         return AssetWorkbook.write(scope.family().get("name").toString(), String.join("、", members.values()),
-                excludeFixed, hidden, members, categories, accounts, summary(totals(accounts, false)), history,
-                dictionaries.labels(AssetDictType.FUND_BUCKET), dictionaries.labels(AssetDictType.INSURANCE_TYPE),
+                excludeFixed, hidden, members, categories, accounts, summary(totals(accounts, false)),
+                accountSnapshots(scope, visibleMembers, excludeFixed), history,
                 dictionaries.labels(AssetDictType.OPERATION), dictionaries.labels(AssetDictType.SOURCE));
     }
 

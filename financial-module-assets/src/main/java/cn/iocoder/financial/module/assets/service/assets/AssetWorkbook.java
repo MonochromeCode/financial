@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,9 +20,8 @@ public final class AssetWorkbook {
     public static byte[] write(String familyName, String memberScope, boolean excludeFixed, boolean hidden,
                                Map<Long, String> members, Map<String, String> categories,
                                List<Map<String, Object>> accounts, Map<String, Object> summary,
-                               List<Map<String, Object>> history, Map<String, String> buckets,
-                               Map<String, String> insuranceTypes, Map<String, String> operations,
-                               Map<String, String> sources) throws IOException {
+                               Map<String, Object> accountSnapshots, List<Map<String, Object>> history,
+                               Map<String, String> operations, Map<String, String> sources) throws IOException {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             Font headingFont = workbook.createFont();
             headingFont.setBold(true);
@@ -30,6 +30,7 @@ public final class AssetWorkbook {
             heading.setFont(headingFont);
             heading.setFillForegroundColor(IndexedColors.ROYAL_BLUE.getIndex());
             heading.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            heading.setWrapText(true);
             CellStyle money = workbook.createCellStyle();
             money.setDataFormat(workbook.createDataFormat().getFormat("#,##0.00"));
 
@@ -48,21 +49,34 @@ public final class AssetWorkbook {
             overview.setColumnWidth(0, 24 * 256);
             overview.setColumnWidth(1, 72 * 256);
 
-            Sheet details = sheet(workbook, "账户明细", List.of("成员", "资产分类", "账户名称", "余额（元）",
-                    "资金用途", "保险类型", "数据日期", "数据来源", "备注"), heading);
-            for (Map<String, Object> account : accounts) {
-                String category = text(account.get("categoryCode"));
-                String bucket = text(account.get("fundBucket"));
-                row(details, money, members.getOrDefault(((Number) account.get("memberId")).longValue(), "家庭成员"),
-                        categories.getOrDefault(category, category), text(account.get("name")),
-                        amount(account.get("balance"), hidden),
-                        "liability".equals(category) ? "不适用" : bucket.isEmpty() ? "未分配" : buckets.getOrDefault(bucket, bucket),
-                        label(insuranceTypes, account.get("insuranceType")), text(account.get("dataDate")),
-                        label(sources, account.get("sourceType")), text(account.get("remark")));
+            List<Map<?, ?>> snapshotColumns = maps(accountSnapshots.get("columns"));
+            List<String> detailHeadings = new ArrayList<>();
+            detailHeadings.add("记录日期");
+            for (Map<?, ?> column : snapshotColumns) {
+                String category = text(column.get("categoryCode"));
+                String member = members.getOrDefault(((Number) column.get("memberId")).longValue(), "家庭成员");
+                detailHeadings.add(text(column.get("name")) + "\n" + member + " · "
+                        + categories.getOrDefault(category, category));
             }
-            details.setColumnWidth(2, 28 * 256);
-            details.setColumnWidth(8, 45 * 256);
-            details.setAutoFilter(new CellRangeAddress(0, details.getLastRowNum(), 0, 8));
+            detailHeadings.addAll(List.of("总资产（元）", "总负债（元）", "净资产（元）"));
+            Sheet details = sheet(workbook, "账户明细", detailHeadings, heading);
+            details.getRow(0).setHeightInPoints(36);
+            details.createFreezePane(1, 1);
+            details.setColumnWidth(0, 16 * 256);
+            for (Map<?, ?> snapshot : maps(accountSnapshots.get("rows"))) {
+                Map<?, ?> amounts = snapshot.get("amounts") instanceof Map<?, ?> value ? value : Map.of();
+                List<Object> values = new ArrayList<>();
+                values.add(text(snapshot.get("date")));
+                for (Map<?, ?> column : snapshotColumns) {
+                    String accountId = text(column.get("id"));
+                    values.add(amounts.containsKey(accountId) ? amount(amounts.get(accountId), hidden) : "—");
+                }
+                values.add(amount(snapshot.get("totalAssets"), hidden));
+                values.add(amount(snapshot.get("totalLiabilities"), hidden));
+                values.add(amount(snapshot.get("netAssets"), hidden));
+                row(details, money, values.toArray());
+            }
+            details.setAutoFilter(new CellRangeAddress(0, details.getLastRowNum(), 0, detailHeadings.size() - 1));
             List<String> historyHeadings = List.of("记录编号", "账户编号", "成员", "资产分类", "操作时账户名称",
                     "变动前余额（元）", "变动后余额（元）", "变动金额（元）", "操作类型", "数据来源", "数据日期", "操作时间", "操作人", "操作人编号");
             Sheet historySheet = sheet(workbook, "历史账户明细", historyHeadings, heading);
@@ -137,5 +151,14 @@ public final class AssetWorkbook {
     private static String label(Map<String, String> labels, Object value) {
         String code = text(value);
         return labels.getOrDefault(code, code);
+    }
+
+    private static List<Map<?, ?>> maps(Object value) {
+        if (!(value instanceof List<?> list)) return List.of();
+        List<Map<?, ?>> result = new ArrayList<>();
+        for (Object item : list) {
+            if (item instanceof Map<?, ?> map) result.add(map);
+        }
+        return result;
     }
 }

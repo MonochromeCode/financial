@@ -99,7 +99,7 @@ public class AssetController {
     }
 
     @GetMapping("/export-excel")
-    @Operation(summary = "导出当前可见范围的家庭资产汇总、当前账户和全部历史明细")
+    @Operation(summary = "导出当前可见范围的家庭资产汇总、历史日期账户余额和全部变更记录")
     public ResponseEntity<byte[]> exportExcel(@RequestParam(required = false) Long memberId,
             @RequestParam(defaultValue = "false") boolean excludeFixed,
             @RequestParam(defaultValue = "false") boolean hidden) throws IOException {
