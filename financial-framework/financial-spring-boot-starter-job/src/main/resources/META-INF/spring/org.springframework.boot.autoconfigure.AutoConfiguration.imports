@@ -1,0 +1,2 @@
+cn.iocoder.financial.framework.quartz.config.YudaoQuartzAutoConfiguration
+cn.iocoder.financial.framework.quartz.config.YudaoAsyncAutoConfiguration

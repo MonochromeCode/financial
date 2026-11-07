@@ -1,0 +1,2 @@
+org.springframework.boot.EnvironmentPostProcessor=\
+  cn.iocoder.financial.framework.mybatis.config.IdTypeEnvironmentPostProcessor

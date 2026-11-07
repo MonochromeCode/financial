@@ -1,0 +1,7 @@
+cn.iocoder.financial.framework.apilog.config.YudaoApiLogAutoConfiguration
+cn.iocoder.financial.framework.jackson.config.YudaoJacksonAutoConfiguration
+cn.iocoder.financial.framework.swagger.config.YudaoSwaggerAutoConfiguration
+cn.iocoder.financial.framework.web.config.YudaoWebAutoConfiguration
+cn.iocoder.financial.framework.xss.config.YudaoXssAutoConfiguration
+cn.iocoder.financial.framework.banner.config.YudaoBannerAutoConfiguration
+cn.iocoder.financial.framework.encrypt.config.YudaoApiEncryptAutoConfiguration

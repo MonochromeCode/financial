@@ -1,0 +1,2 @@
+cn.iocoder.financial.framework.tracer.config.YudaoTracerAutoConfiguration
+cn.iocoder.financial.framework.tracer.config.YudaoMetricsAutoConfiguration

@@ -1,0 +1,3 @@
+cn.iocoder.financial.framework.mq.redis.config.YudaoRedisMQProducerAutoConfiguration
+cn.iocoder.financial.framework.mq.redis.config.YudaoRedisMQConsumerAutoConfiguration
+cn.iocoder.financial.framework.mq.rabbitmq.config.YudaoRabbitMQAutoConfiguration

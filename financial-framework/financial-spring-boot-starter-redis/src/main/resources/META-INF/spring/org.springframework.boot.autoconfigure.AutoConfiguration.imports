@@ -1,0 +1,2 @@
+cn.iocoder.financial.framework.redis.config.YudaoRedisAutoConfiguration
+cn.iocoder.financial.framework.redis.config.YudaoCacheAutoConfiguration

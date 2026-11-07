@@ -1,0 +1,3 @@
+cn.iocoder.financial.framework.datasource.config.YudaoDataSourceAutoConfiguration
+cn.iocoder.financial.framework.mybatis.config.YudaoMybatisAutoConfiguration
+cn.iocoder.financial.framework.translate.config.YudaoTranslateAutoConfiguration

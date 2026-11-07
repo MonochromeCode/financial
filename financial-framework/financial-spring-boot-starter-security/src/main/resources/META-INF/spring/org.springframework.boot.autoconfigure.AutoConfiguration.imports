@@ -1,0 +1,3 @@
+cn.iocoder.financial.framework.security.config.YudaoSecurityAutoConfiguration
+cn.iocoder.financial.framework.security.config.YudaoWebSecurityConfigurerAdapter
+cn.iocoder.financial.framework.operatelog.config.YudaoOperateLogConfiguration
