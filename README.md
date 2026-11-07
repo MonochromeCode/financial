@@ -70,17 +70,18 @@ financial/
 ├── financial-module-infra/       基础设施能力
 ├── financial-module-assets/      家庭资产、业务校验、金额计算、导出
 │   ├── src/main/java/cn/iocoder/financial/module/assets/
-│   │   ├── controller/admin/     HTTP 接口与请求校验
-│   │   ├── service/              业务流程、权限、字典、计算与导出
+│   │   ├── controller/admin/assets/vo/ 独立请求与响应 VO
+│   │   ├── service/assets/       Service 接口、实现及业务辅助类
+│   │   ├── convert/assets/       业务结果与响应 VO 转换
 │   │   ├── enums/                固定计算口径与字典类型
-│   │   └── dal/                  租户参数封装与 Mapper 接口
+│   │   └── dal/assets/           租户参数封装与 Mapper 接口
 │   └── src/main/resources/mapper/assets/AssetMapper.xml
 ├── financial-server/             启动入口、配置与模块装配
 ├── script/sql/household-assets.sql
 └── script/seed-household-demo.ps1
 ```
 
-`financial-server` 负责启动和模块装配，资产业务独立为 `financial-module-assets`。Service 调用具名 Repository 方法，SQL 集中在 Mapper XML，所有资产读写显式绑定当前租户和家庭范围。金额汇总与月度比较由 `AssetAmounts` 处理，历史状态还原由 `AssetAccountSnapshots` 处理。
+`financial-server` 负责启动和模块装配，资产业务独立为 `financial-module-assets`。资产代码按 system 模块的领域子包组织：Controller 只负责参数校验和响应，Service 使用接口与 `ServiceImpl` 分离，VO 独立成文件，复杂结果经 convert 转换；SQL 集中在 Mapper XML，所有资产读写显式绑定当前租户和家庭范围。金额汇总与月度比较由 `AssetAmounts` 处理，历史状态还原由 `AssetAccountSnapshots` 处理。
 
 账户模板、资金用途、保险类型、操作类型、来源及新账本的分类名称统一使用系统字典；前端通过 `/finance/assets/context` 的 `options` 读取，与后端校验、Excel 导出共享配置。已有家庭分类仍在家庭设置中单独维护。
 

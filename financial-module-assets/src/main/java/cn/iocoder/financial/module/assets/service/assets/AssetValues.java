@@ -1,21 +1,25 @@
-package cn.iocoder.financial.module.assets.service;
+package cn.iocoder.financial.module.assets.service.assets;
 
 import cn.iocoder.financial.framework.common.exception.ServiceException;
+import cn.iocoder.financial.framework.common.exception.util.ServiceExceptionUtil;
 import cn.iocoder.financial.framework.security.core.util.SecurityFrameworkUtils;
 
 import java.util.HashMap;
 import java.util.Map;
+
+import static cn.iocoder.financial.module.assets.enums.ErrorCodeConstants.ASSET_FORBIDDEN;
+import static cn.iocoder.financial.module.assets.enums.ErrorCodeConstants.ASSET_INVALID;
 
 public final class AssetValues {
     private AssetValues() {
     }
 
     public static ServiceException invalid(String message) {
-        return new ServiceException(1_050_000_001, message);
+        return ServiceExceptionUtil.exception(ASSET_INVALID, message);
     }
 
     public static ServiceException forbidden() {
-        return new ServiceException(403, "没有权限操作该家庭成员的资产");
+        return ServiceExceptionUtil.exception(ASSET_FORBIDDEN);
     }
 
     public static long userId() {

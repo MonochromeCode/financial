@@ -1,4 +1,4 @@
-package cn.iocoder.financial.module.assets.service;
+package cn.iocoder.financial.module.assets.service.assets;
 
 import java.math.BigDecimal;
 import java.util.*;

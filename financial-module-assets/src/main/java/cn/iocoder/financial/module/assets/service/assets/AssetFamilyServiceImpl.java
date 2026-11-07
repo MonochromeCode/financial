@@ -1,15 +1,19 @@
-package cn.iocoder.financial.module.assets.service;
+package cn.iocoder.financial.module.assets.service.assets;
+
+import cn.iocoder.financial.module.assets.controller.admin.assets.vo.*;
+import cn.iocoder.financial.module.assets.convert.assets.AssetConvert;
 
 import cn.iocoder.financial.framework.tenant.core.context.TenantContextHolder;
-import cn.iocoder.financial.module.assets.controller.admin.vo.AssetRequests.CategorySave;
-import cn.iocoder.financial.module.assets.controller.admin.vo.AssetRequests.FamilySave;
-import cn.iocoder.financial.module.assets.controller.admin.vo.AssetRequests.MemberSave;
-import cn.iocoder.financial.module.assets.dal.AssetRepository;
+
+
+
+import cn.iocoder.financial.module.assets.dal.assets.AssetRepository;
 import cn.iocoder.financial.module.assets.enums.AssetCategory;
 import cn.iocoder.financial.module.assets.enums.AssetDictType;
-import cn.iocoder.financial.module.assets.service.AssetAccessService.Scope;
+import cn.iocoder.financial.module.assets.service.assets.AssetAccessService.Scope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,42 +21,43 @@ import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Objects;
 
-import static cn.iocoder.financial.module.assets.service.AssetValues.id;
-import static cn.iocoder.financial.module.assets.service.AssetValues.invalid;
-import static cn.iocoder.financial.module.assets.service.AssetValues.userId;
-import static cn.iocoder.financial.module.assets.service.AssetValues.values;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.id;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.invalid;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.userId;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.values;
 
+/**
+ * 家庭账本、成员与分类管理 Service 实现类
+ */
 @Service
 @Transactional(rollbackFor = Exception.class)
-public class AssetFamilyService {
-    private final AssetRepository repository;
-    private final AssetAccessService access;
-    private final AssetDictionaryService dictionaries;
-    private final BigDecimal maxBalance;
+public class AssetFamilyServiceImpl implements AssetFamilyService {
+    @Resource
+    private AssetRepository repository;
+    @Resource
+    private AssetAccessService access;
+    @Resource
+    private AssetDictionaryService dictionaries;
+    @Value("${financial.assets.max-account-balance:999999999999.99}")
+    private BigDecimal maxBalance;
 
-    public AssetFamilyService(AssetRepository repository, AssetAccessService access, AssetDictionaryService dictionaries,
-                              @Value("${financial.assets.max-account-balance:999999999999.99}") BigDecimal maxBalance) {
-        this.repository = repository;
-        this.access = access;
-        this.dictionaries = dictionaries;
-        this.maxBalance = maxBalance;
-    }
-
-    public Map<String, Object> context() {
+    @Override
+    public AssetContextRespVO context() {
         if (repository.selectFamily(Map.of("userId", userId())) == null) {
-            return values("family", null, "userId", userId(), "tenantId", TenantContextHolder.getRequiredTenantId(),
-                    "options", dictionaries.context());
+            return AssetConvert.convert(values("family", null, "userId", userId(), "tenantId", TenantContextHolder.getRequiredTenantId(),
+                    "options", dictionaries.context()), AssetContextRespVO.class);
         }
         Scope scope = access.scope(false);
-        return values("family", scope.family(), "userId", userId(), "tenantId", TenantContextHolder.getRequiredTenantId(),
+        return AssetConvert.convert(values("family", scope.family(), "userId", userId(), "tenantId", TenantContextHolder.getRequiredTenantId(),
                 "owner", scope.owner(), "currentMemberId", scope.memberId(), "members", scope.members().stream()
                         .filter(member -> scope.visibleIds().contains(id(member, "id"))).toList(),
                 "categories", repository.selectCategories(Map.of("familyId", scope.familyId())),
                 "maxBalance", maxBalance.toPlainString(), "importEnabled", false, "syncEnabled", false,
-                "options", dictionaries.context());
+                "options", dictionaries.context()), AssetContextRespVO.class);
     }
 
-    public long initialize(FamilySave request) {
+    @Override
+    public long initialize(AssetFamilySaveReqVO request) {
         if (repository.selectFamily(Map.of("userId", userId())) != null) {
             throw invalid("你已经加入家庭账本");
         }
@@ -73,13 +78,15 @@ public class AssetFamilyService {
         return familyId;
     }
 
-    public void saveFamily(FamilySave request) {
+    @Override
+    public void saveFamily(AssetFamilySaveReqVO request) {
         Scope scope = access.scope(true);
         access.owner(scope);
         repository.updateFamily(values("familyId", scope.familyId(), "name", request.getName().trim(), "allow", request.isAllowViewOthers()));
     }
 
-    public void saveMember(MemberSave request) {
+    @Override
+    public void saveMember(AssetMemberSaveReqVO request) {
         Scope scope = access.scope(true);
         access.owner(scope);
         if (request.getUserId() != null && repository.selectEnabledUser(Map.of("userId", request.getUserId())) == null) {
@@ -108,6 +115,7 @@ public class AssetFamilyService {
         }
     }
 
+    @Override
     public void deleteMember(long memberId) {
         Scope scope = access.scope(true);
         access.owner(scope);
@@ -124,7 +132,8 @@ public class AssetFamilyService {
         repository.deleteMember(params);
     }
 
-    public void saveCategory(CategorySave request) {
+    @Override
+    public void saveCategory(AssetCategorySaveReqVO request) {
         Scope scope = access.scope(true);
         access.owner(scope);
         Map<String, Object> category = repository.selectCategory(Map.of("familyId", scope.familyId(), "id", request.getId()));

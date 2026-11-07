@@ -1,29 +1,28 @@
-package cn.iocoder.financial.module.assets.service;
+package cn.iocoder.financial.module.assets.service.assets;
 
-import cn.iocoder.financial.module.assets.dal.AssetRepository;
+import cn.iocoder.financial.module.assets.dal.assets.AssetRepository;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
 
-import static cn.iocoder.financial.module.assets.service.AssetValues.flag;
-import static cn.iocoder.financial.module.assets.service.AssetValues.forbidden;
-import static cn.iocoder.financial.module.assets.service.AssetValues.id;
-import static cn.iocoder.financial.module.assets.service.AssetValues.invalid;
-import static cn.iocoder.financial.module.assets.service.AssetValues.userId;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.flag;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.forbidden;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.id;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.invalid;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.userId;
 
+/**
+ * 家庭及成员数据权限 Service 实现类
+ */
 @Service
-public class AssetAccessService {
-    private final AssetRepository repository;
+public class AssetAccessServiceImpl implements AssetAccessService {
+    @Resource
+    private AssetRepository repository;
 
-    public AssetAccessService(AssetRepository repository) {
-        this.repository = repository;
-    }
 
-    public record Scope(Map<String, Object> family, long familyId, long memberId, boolean owner,
-                         List<Map<String, Object>> members, List<Long> visibleIds) {
-    }
-
+    @Override
     public Scope scope(boolean lock) {
         Map<String, Object> family = repository.selectFamily(Map.of("userId", userId(), "lock", lock));
         if (family == null) {
@@ -38,6 +37,7 @@ public class AssetAccessService {
         return new Scope(family, familyId, memberId, owner, members, visible);
     }
 
+    @Override
     public List<Long> visible(Scope scope, Long memberId) {
         if (memberId == null) {
             return scope.visibleIds();
@@ -48,6 +48,7 @@ public class AssetAccessService {
         return List.of(memberId);
     }
 
+    @Override
     public void editable(Scope scope, long memberId) {
         if (scope.members().stream().noneMatch(member -> id(member, "id") == memberId)
                 || !scope.owner() && scope.memberId() != memberId) {
@@ -55,6 +56,7 @@ public class AssetAccessService {
         }
     }
 
+    @Override
     public void owner(Scope scope) {
         if (!scope.owner()) {
             throw forbidden();

@@ -1,7 +1,8 @@
-package cn.iocoder.financial.module.assets.dal;
+package cn.iocoder.financial.module.assets.dal.assets;
 
 import cn.iocoder.financial.framework.tenant.core.context.TenantContextHolder;
-import cn.iocoder.financial.module.assets.dal.mysql.AssetMapper;
+import cn.iocoder.financial.module.assets.dal.mysql.assets.AssetMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
@@ -10,11 +11,8 @@ import java.util.Map;
 
 @Repository
 public class AssetRepository {
-    private final AssetMapper mapper;
-
-    public AssetRepository(AssetMapper mapper) {
-        this.mapper = mapper;
-    }
+    @Resource
+    private AssetMapper mapper;
 
     private Map<String, Object> scoped(Map<String, ?> values) {
         Map<String, Object> params = new HashMap<>(values);

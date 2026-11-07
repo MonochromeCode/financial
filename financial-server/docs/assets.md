@@ -1,6 +1,6 @@
 # 家庭资产记账
 
-这是家庭资产负债表业务模块，不包含日常消费流水。业务位于独立模块 `financial-module-assets`，包名为 `cn.iocoder.financial.module.assets`，由 `financial-server` 聚合启动和打包；前端位于 Vben 工程 `apps/web-antd/src/views/finance`。Service 不包含 SQL，读写经 Repository 注入当前租户后调用 Mapper XML；权限仍由业务层检查家庭、成员范围，写入继续使用原事务和家庭行锁。
+这是家庭资产负债表业务模块，不包含日常消费流水。业务位于独立模块 `financial-module-assets`，包名为 `cn.iocoder.financial.module.assets`，由 `financial-server` 聚合启动和打包；前端位于 Vben 工程 `apps/web-antd/src/views/finance`。代码按 system 模块的领域子包组织，Controller、Service 接口与 `ServiceImpl`、请求响应 VO 和 convert 分层；Service 不包含 SQL，读写经 Repository 注入当前租户后调用 Mapper XML；权限仍由业务层检查家庭、成员范围，写入继续使用原事务和家庭行锁。
 
 ## 部署
 

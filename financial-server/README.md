@@ -10,14 +10,15 @@
 financial-server/                  启动、配置、装配
 financial-module-assets/
 ├── src/main/java/cn/iocoder/financial/module/assets/
-│   ├── controller/admin/          接口和请求对象
-│   ├── service/                   业务校验、计算、字典与导出
+│   ├── controller/admin/assets/vo/ 独立请求与响应 VO
+│   ├── service/assets/            Service 接口、实现与业务辅助类
+│   ├── convert/assets/            业务结果转换
 │   ├── enums/                     固定计算口径、字典类型
-│   └── dal/                       Repository 与 Mapper 接口
+│   └── dal/assets/                Repository 与 Mapper 接口
 └── src/main/resources/mapper/assets/AssetMapper.xml
 ```
 
-新增业务模块时，建立 `financial-module-<业务名>`，在根 POM 注册并由 server 依赖。Controller、Service 中不编写 SQL，数据访问通过具名 Repository / Mapper 方法完成；SQL 置于 Mapper XML，使用参数绑定。管理端 Controller 放在 `controller.admin` 子包下，框架会添加 `/admin-api` 前缀。
+新增业务模块时，建立 `financial-module-<业务名>`，在根 POM 注册并由 server 依赖。Controller、Service 中不编写 SQL，数据访问通过具名 Repository / Mapper 方法完成；SQL 置于 Mapper XML，使用参数绑定。管理端 Controller 放在 `controller.admin.assets` 子包下，Service 使用接口与 `ServiceImpl` 分离，VO 按请求和响应独立成文件，框架会添加 `/admin-api` 前缀。
 
 当前业务模块：[家庭资产记账](docs/assets.md)。
 

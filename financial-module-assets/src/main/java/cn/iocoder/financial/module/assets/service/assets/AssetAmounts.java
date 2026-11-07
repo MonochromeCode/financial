@@ -1,4 +1,4 @@
-package cn.iocoder.financial.module.assets.service;
+package cn.iocoder.financial.module.assets.service.assets;
 
 import cn.iocoder.financial.module.assets.enums.AssetCategory;
 

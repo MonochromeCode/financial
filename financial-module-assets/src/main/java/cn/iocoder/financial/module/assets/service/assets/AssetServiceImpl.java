@@ -1,12 +1,15 @@
-package cn.iocoder.financial.module.assets.service;
+package cn.iocoder.financial.module.assets.service.assets;
 
 import cn.hutool.crypto.digest.DigestUtil;
-import cn.iocoder.financial.module.assets.controller.admin.vo.AssetRequests.*;
-import cn.iocoder.financial.module.assets.dal.AssetRepository;
+import cn.iocoder.financial.framework.common.pojo.PageResult;
+import cn.iocoder.financial.module.assets.convert.assets.AssetConvert;
+import cn.iocoder.financial.module.assets.controller.admin.assets.vo.*;
+import cn.iocoder.financial.module.assets.dal.assets.AssetRepository;
 import cn.iocoder.financial.module.assets.enums.AssetDictType;
 import cn.iocoder.financial.module.assets.enums.AssetCategory;
-import cn.iocoder.financial.module.assets.service.AssetAccessService.Scope;
+import cn.iocoder.financial.module.assets.service.assets.AssetAccessService.Scope;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,47 +19,49 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
 
-import static cn.iocoder.financial.module.assets.service.AssetAmounts.amount;
-import static cn.iocoder.financial.module.assets.service.AssetAmounts.monthlyChanges;
-import static cn.iocoder.financial.module.assets.service.AssetAmounts.summary;
-import static cn.iocoder.financial.module.assets.service.AssetAmounts.totals;
-import static cn.iocoder.financial.module.assets.service.AssetValues.flag;
-import static cn.iocoder.financial.module.assets.service.AssetValues.id;
-import static cn.iocoder.financial.module.assets.service.AssetValues.invalid;
-import static cn.iocoder.financial.module.assets.service.AssetValues.userId;
-import static cn.iocoder.financial.module.assets.service.AssetValues.values;
+import static cn.iocoder.financial.module.assets.service.assets.AssetAmounts.amount;
+import static cn.iocoder.financial.module.assets.service.assets.AssetAmounts.monthlyChanges;
+import static cn.iocoder.financial.module.assets.service.assets.AssetAmounts.summary;
+import static cn.iocoder.financial.module.assets.service.assets.AssetAmounts.totals;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.flag;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.id;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.invalid;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.userId;
+import static cn.iocoder.financial.module.assets.service.assets.AssetValues.values;
 
+/**
+ * 资产查询、历史及原子记账 Service 实现类
+ */
 @Service
 @Transactional(rollbackFor = Exception.class)
-public class AssetService {
-    private final AssetRepository repository;
-    private final AssetAccessService access;
-    private final AssetDictionaryService dictionaries;
-    private final BigDecimal maxBalance;
+public class AssetServiceImpl implements AssetService {
+    @Resource
+    private AssetRepository repository;
+    @Resource
+    private AssetAccessService access;
+    @Resource
+    private AssetDictionaryService dictionaries;
+    @Value("${financial.assets.max-account-balance:999999999999.99}")
+    private BigDecimal maxBalance;
 
-    public AssetService(AssetRepository repository, AssetAccessService access, AssetDictionaryService dictionaries,
-                        @Value("${financial.assets.max-account-balance:999999999999.99}") BigDecimal maxBalance) {
-        this.repository = repository;
-        this.access = access;
-        this.dictionaries = dictionaries;
-        this.maxBalance = maxBalance;
-    }
-
-    public List<Map<String, Object>> accounts(Long memberId, String category) {
+    @Override
+    public List<AssetAccountRespVO> accounts(Long memberId, String category) {
         Scope scope = access.scope(false);
         Map<String, Object> params = values("familyId", scope.familyId(), "members", access.visible(scope, memberId), "category", category);
-        return repository.selectAccounts(params);
+        return AssetConvert.convertList(repository.selectAccounts(params), AssetAccountRespVO.class);
     }
 
-    public Map<String, Object> accountSnapshots(Long memberId, boolean excludeFixed) {
+    @Override
+    public AssetAccountSnapshotsRespVO accountSnapshots(Long memberId, boolean excludeFixed) {
         Scope scope = access.scope(false);
         List<Long> members = access.visible(scope, memberId);
         List<Map<String, Object>> records = repository.selectAccountHistory(Map.of("familyId", scope.familyId(), "members", members));
         List<String> dates = repository.selectSnapshotDates(Map.of("familyId", scope.familyId(), "members", members)).stream()
                 .map(row -> row.get("date").toString()).toList();
-        return AssetAccountSnapshots.build(records, dates, new HashSet<>(members), excludeFixed);
+        return AssetConvert.convert(AssetAccountSnapshots.build(records, dates, new HashSet<>(members), excludeFixed), AssetAccountSnapshotsRespVO.class);
     }
 
+    @Override
     public byte[] exportExcel(Long memberId, boolean excludeFixed, boolean hidden) throws IOException {
         Scope scope = access.scope(false);
         List<Long> visibleMembers = access.visible(scope, memberId);
@@ -87,15 +92,17 @@ public class AssetService {
         }).toList();
     }
 
-    public List<Map<String, Object>> trends(Long memberId, boolean excludeFixed, LocalDate start, LocalDate end) {
+    @Override
+    public List<AssetTrendRespVO> trends(Long memberId, boolean excludeFixed, LocalDate start, LocalDate end) {
         Scope scope = access.scope(false);
         if (start != null && end != null && start.isAfter(end)) {
             throw invalid("开始日期不能晚于结束日期");
         }
-        return snapshots(scope, access.visible(scope, memberId), excludeFixed, start, end);
+        return AssetConvert.convertList(snapshots(scope, access.visible(scope, memberId), excludeFixed, start, end), AssetTrendRespVO.class);
     }
 
-    public Map<String, Object> dashboard(Long memberId, boolean excludeFixed) {
+    @Override
+    public AssetDashboardRespVO dashboard(Long memberId, boolean excludeFixed) {
         Scope scope = access.scope(false);
         List<Long> members = access.visible(scope, memberId);
         Map<String, Object> params = Map.of("familyId", scope.familyId(), "members", members);
@@ -133,13 +140,14 @@ public class AssetService {
                     : totals.get(code).multiply(BigDecimal.valueOf(100)).divide(total, 2, RoundingMode.HALF_UP));
             composition.add(item);
         }
-        return values("overview", overview, "accounts", accounts, "monthly", changes, "composition", composition, "buckets", buckets,
+        return AssetConvert.convert(values("overview", overview, "accounts", accounts, "monthly", changes, "composition", composition, "buckets", buckets,
                 "insuranceTypes", insuranceTypes, "accountCount", accounts.size(),
                 "trends", snapshots,
-                "records", history(memberId, null, null, null, 1, 6));
+                "records", history(memberId, null, null, null, 1, 6)), AssetDashboardRespVO.class);
     }
 
-    public Map<String, Object> history(Long memberId, String category, LocalDate start, LocalDate end, int page, int size) {
+    @Override
+    public PageResult<AssetRecordRespVO> history(Long memberId, String category, LocalDate start, LocalDate end, int page, int size) {
         if (page < 1 || page > 100000 || size < 1 || size > 100) {
             throw invalid("分页参数无效");
         }
@@ -148,10 +156,11 @@ public class AssetService {
                 "category", category, "start", start, "end", end, "offset", (page - 1) * size, "size", size);
         List<Map<String, Object>> records = repository.selectHistory(params);
         Map<String, Object> count = repository.countHistory(params);
-        return values("list", records, "total", count.get("total"));
+        return new PageResult<>(AssetConvert.convertList(records, AssetRecordRespVO.class), ((Number) count.get("total")).longValue());
     }
 
-    public long submit(Submit request) {
+    @Override
+    public long submit(AssetSubmitReqVO request) {
         Scope scope = access.scope(true);
         Map<String, Object> params = values("familyId", scope.familyId(), "requestId", request.getRequestId());
         String hash = DigestUtil.sha256Hex(request.getUpdateDate() + ":" + request.getAccounts().toString());
@@ -172,7 +181,7 @@ public class AssetService {
                 .forEach(account -> existingAccounts.put(id(account, "id"), account));
         List<Map<String, Object>> categories = repository.selectCategories(Map.of("familyId", scope.familyId()));
         Set<Long> submittedIds = new HashSet<>();
-        for (AccountChange change : request.getAccounts()) {
+        for (AssetAccountSaveReqVO change : request.getAccounts()) {
             access.editable(scope, change.getMemberId());
             if (change.getBalance() != null && change.getBalance().compareTo(maxBalance) > 0) {
                 throw invalid("单账户金额不能超过 " + maxBalance.toPlainString() + " 元");
@@ -213,7 +222,7 @@ public class AssetService {
         }
         long batchId = repository.insertBatch(values("familyId", scope.familyId(), "userId", userId(), "requestId", request.getRequestId(),
                 "hash", hash, "date", request.getUpdateDate()));
-        for (AccountChange change : request.getAccounts()) {
+        for (AssetAccountSaveReqVO change : request.getAccounts()) {
             Map<String, Object> old = change.getId() == null ? null : existingAccounts.get(change.getId());
             Map<String, Object> accountParams = values("familyId", scope.familyId(), "member", change.getMemberId(),
                     "category", change.getCategoryCode(), "name", change.getName().trim(), "template", change.getTemplateCode(),

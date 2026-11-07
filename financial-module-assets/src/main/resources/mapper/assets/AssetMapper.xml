@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="cn.iocoder.financial.module.assets.dal.mysql.AssetMapper">
+<mapper namespace="cn.iocoder.financial.module.assets.dal.mysql.assets.AssetMapper">
     <sql id="accountQuery">
         SELECT id, member_id AS memberId, category_code AS categoryCode, name, template_code AS templateCode,
         balance, fund_bucket AS fundBucket, insurance_type AS insuranceType, data_date AS dataDate,

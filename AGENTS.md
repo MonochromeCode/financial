@@ -2,6 +2,23 @@
 
 适用于本仓库全部目录。更深层 `AGENTS.md` 优先；用户明确要求优先。修改前阅读本文件、相关源码、POM 及 `financial-server/docs/assets.md`。
 
+## 代码模板：financial-module-system
+
+新增和调整代码以 `financial-module-system` 为风格模板，标准 CRUD 优先参考 `notice`，复杂业务参考 `user`，不要以当前资产模块的简化实现定义新规范。
+
+以下路径均相对于 `financial-module-system/src/main/java/cn/iocoder/financial/module/system/`：
+
+| 职责 | 参考文件 |
+| --- | --- |
+| Controller、路由、权限及响应 | `controller/admin/notice/NoticeController.java` |
+| Service 接口及实现 | `service/notice/NoticeService.java`、`service/notice/NoticeServiceImpl.java` |
+| 独立请求与响应 VO | `controller/admin/notice/vo/NoticeSaveReqVO.java`、`NoticePageReqVO.java`、`NoticeRespVO.java` |
+| 实体与持久化查询 | `dal/dataobject/notice/NoticeDO.java`、`dal/mysql/notice/NoticeMapper.java` |
+| 租户实体与复杂业务 | `dal/dataobject/user/AdminUserDO.java`、`service/user/AdminUserServiceImpl.java` |
+| 复杂对象转换及错误码 | `convert/user/UserConvert.java`、`enums/ErrorCodeConstants.java` |
+
+新增业务按领域子包组织：`controller/admin/<领域>/vo`、`service/<领域>`、`dal/dataobject/<领域>`、`dal/mysql/<领域>`；按需要使用 `convert/<领域>` 和 `enums`。
+
 ## 1. 技术与模块边界
 
 - 使用 JDK 25、Maven 3.9+、Spring Boot 4.1.2、Spring Security、MySQL 8、Redis、MyBatis Plus / Mapper XML；版本以当前 POM 为准。
@@ -15,24 +32,32 @@
 
 - 使用 UTF-8、4 空格缩进，花括号沿用同目录 Java 风格；不为统一格式重排无关代码。
 - 类名使用 PascalCase，方法与字段使用 camelCase，常量使用 UPPER_SNAKE_CASE；命名体现家庭、成员、账户、记录和快照等现有概念。
-- 同类职责沿用 `*Controller`、`*Service`、`*Repository`、`*Mapper` 及现有请求对象命名，不机械增加无实际用途的接口/实现层。
-- 使用构造器注入，依赖字段优先 `final`；复用现有 Lombok 配置，校验和 Servlet 相关类型使用 `jakarta.*`。
-- 新增导入优先显式列出类型，不用通配符；不顺手批量清理遗留通配符。
+- 标准业务使用 `XxxController`、`XxxService` 接口、`XxxServiceImpl` 实现、`XxxMapper` 和 `XxxDO`；请求与响应分别命名为 `XxxSaveReqVO`、`XxxPageReqVO`、`XxxRespVO`，不将所有请求类堆在一个嵌套类容器里。
+- Spring 依赖注入沿用 `system` 的 `@Resource` 字段注入；Service 实现标注 `@Service` 并实现接口方法，不另外强制构造器注入风格。
+- 复用现有 Lombok 配置；VO / DO 按需使用 `@Data`、`@EqualsAndHashCode(callSuper = true)` 等注解，校验、资源注入和 Servlet 类型使用 `jakarta.*`。
+- 导入分组与静态导入沿用对应 `system` 文件；工具方法、错误码可静态导入，不为格式偏好批量整理无关代码。
 - 方法保持单一职责，优先提前校验并返回，避免嵌套多层条件、重复校验代码和含义模糊的布尔参数组合。
-- 新增代码优先明确的请求/响应或内部值类型；已有资产链路使用 Map 的部分保持字段契约，不在无关任务中整体改写，也不再扩散无约束的 Map 到新业务。
-- 不捕获 `Exception` 后忽略或返回成功；沿用项目业务异常和统一异常处理，日志不得输出完整账户、令牌或敏感请求体。
-- 代码注释详细明了。
+- 新增业务使用明确的 VO、DO 和必要的内部值类型，不以 `Map<String, Object>` 或 `CommonResult<?>` 代替确定的数据结构；已有资产链路的 Map 在相关重构时逐步替换并保持字段契约。
+- 业务异常沿用 `throw exception(ERROR_CODE)`，在所属模块的 `enums/ErrorCodeConstants` 定义有业务含义的错误码；不在新功能中散落 HTTP 状态码和临时错误文本。
+- 不捕获 `Exception` 后忽略或返回成功；沿用统一异常处理，日志不得输出完整账户、令牌或敏感请求体。
+- 代码注释详细明了，参考 `system` 的中文 JavaDoc：类说明职责，Service 接口说明行为、参数和返回值，DO 字段说明业务含义及关联枚举；复杂流程说明关键校验、步骤和原因，不复制其他模块的作者或无关描述。
 
 ## 3. 分层与接口契约
 
-- `controller/admin`：路由、Jakarta Validation、参数转换及响应封装，不写 SQL 或完整业务流程。
-- `controller/admin/vo`：请求字段与格式约束；权限、跨字段及数据库状态校验仍由 Service 完成。
+- `controller/admin/<领域>`：沿用 `@Tag`、`@RestController`、`@RequestMapping`、`@Validated`，方法声明 `@Operation`，请求使用 `@Valid` / `@Validated`；只处理参数、Service 调用和响应转换。
+- 新增标准 CRUD 路由参考 `system` 的 `/create`、`/update`、`/delete`、`/delete-list`、`/get`、`/page`、`/export-excel`，按实际功能提供，不为了凑齐路由添加无需求接口；现有 `/finance/assets` 契约保持兼容。
+- 菜单及操作权限沿用 `@PreAuthorize("@ss.hasPermission('模块:资源:操作')")`，权限标识与菜单配置、前端操作一致；家庭成员数据权限仍由 Service 独立校验。
+- `controller/admin/<领域>/vo`：每种请求/响应使用独立文件，以 `@Schema` 说明字段、示例和必填性，以 Jakarta Validation 校验输入；分页请求继承 `PageParam`，分页响应使用 `PageResult<XxxRespVO>`。
+- DO 位于 `dal/dataobject/<领域>`，使用 `@TableName` 映射真实表；公共审计字段继承现有 `BaseDO`，需要显式租户字段时参考 `AdminUserDO` 使用 `TenantBaseDO`，不能仅为复用字段改变表结构或租户语义。
+- `XxxService` 定义业务方法，`XxxServiceImpl` 实现校验与编排；更新/删除前通过 `validateXxxExists` 等具名方法校验，复杂流程分步骤组织。
 - `service`：家庭权限、业务流程和事务编排；金额聚合复用 `AssetAmounts`，历史还原复用 `AssetAccountSnapshots`，字典及导出分别归 `AssetDictionaryService`、`AssetWorkbook`。
-- `dal/AssetRepository`：具名数据访问、租户参数及结果规范化；`dal/mysql/AssetMapper` 对应 Mapper XML，SQL 集中在 `src/main/resources/mapper/assets/AssetMapper.xml`。
-- Controller / Service 中不引入 `JdbcTemplate`、拼接 SQL 或通用“执行任意 SQL”方法；不绕过 Repository 的租户封装直接访问资产 Mapper。
+- 新增标准持久化使用 `@Mapper` 和 `BaseMapperX<XxxDO>`，ServiceImpl 直接调用 Mapper；条件查询参考 `LambdaQueryWrapperX` 的 `eqIfPresent`、`likeIfPresent` 等方法，使用实体方法引用，不额外强制增加 Repository 层。
+- 多表关联或复杂 SQL 按需放入对应 Mapper XML，不能把简单 CRUD 全部手写为 XML；Controller / Service 不引入 `JdbcTemplate`、拼接 SQL 或通用“执行任意 SQL”方法。
+- 已有 `AssetRepository` 承担显式租户参数及结果规范化，维护当前资产链路时继续经它调用 Mapper；若将该链路迁移为 `system` 风格，必须同时迁移类型、租户/家庭约束及验证，不只删除 Repository。
+- 普通对象转换沿用 `BeanUtils.toBean`，复杂关联组装参考 `UserConvert`，避免在 Controller 手工拼装大段 Map；不为简单字段复制新建转换框架。
 - Mapper 使用 `#{...}` 参数绑定；动态排序等标识符必须来自服务端白名单，不把客户端值直接放入 `${...}`。
 - 管理端框架自动添加 `/admin-api`，资产 Controller 使用现有 `/finance/assets`；不能重复添加前缀或无意改变接口地址。
-- 普通接口沿用 `CommonResult`；金额通过现有十进制字符串转换返回。Excel 等二进制响应沿用独立下载方式及缓存控制。
+- 普通接口使用明确泛型的 `CommonResult<T>` 和 `success(...)`；新增返回值参考 `system` 的创建返回 ID、修改/删除返回布尔值、查询返回 RespVO。金额通过现有十进制字符串转换返回，不能因转为 VO 而丢失精度；Excel 等二进制响应沿用独立下载方式及缓存控制。
 - 新增或调整接口同步核对前端 `src/api/finance/assets.ts`、字段可空性、时间格式和业务文档。
 
 ## 4. 金额与历史规则

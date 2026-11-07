@@ -1,4 +1,4 @@
-package cn.iocoder.financial.module.assets.dal.mysql;
+package cn.iocoder.financial.module.assets.dal.mysql.assets;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import org.apache.ibatis.annotations.Mapper;
