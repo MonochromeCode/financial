@@ -11,6 +11,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -264,6 +265,33 @@ public class AssetService {
         Map<String, Object> params = values("familyId", scope.familyId(), "members", visible(scope, memberId), "category", category);
         return repository.list(ACCOUNTS_SQL + " AND member_id IN (:members)"
                 + (category == null ? "" : " AND category_code=:category") + " ORDER BY sort_order,id", params);
+    }
+
+    public byte[] exportExcel(Long memberId, boolean excludeFixed, boolean hidden) throws IOException {
+        Scope scope = scope(false);
+        List<Long> visibleMembers = visible(scope, memberId);
+        List<Map<String, Object>> accounts = repository.list(ACCOUNTS_SQL + " AND member_id IN (:members)"
+                + (excludeFixed ? " AND category_code<>'fixed'" : "") + " ORDER BY member_id,sort_order,id",
+                Map.of("familyId", scope.familyId(), "members", visibleMembers));
+        Map<Long, String> members = new LinkedHashMap<>();
+        scope.members().stream().filter(member -> visibleMembers.contains(id(member, "id")))
+                .forEach(member -> members.put(id(member, "id"), member.get("displayName").toString()));
+        Map<String, String> categories = new LinkedHashMap<>();
+        repository.list(CATEGORIES_SQL, Map.of("familyId", scope.familyId()))
+                .forEach(category -> categories.put(category.get("code").toString(), category.get("name").toString()));
+        List<Map<String, Object>> history = repository.list("""
+                SELECT r.id,r.account_id AS accountId,r.member_id AS memberId,r.category_code AS categoryCode,
+                       r.account_name AS accountName,r.previous_balance AS previousBalance,
+                       r.current_balance AS currentBalance,r.change_amount AS changeAmount,r.operation,
+                       r.source_type AS sourceType,r.data_date AS dataDate,r.created_at AS createdAt,
+                       r.operator_user_id AS operatorUserId,u.nickname AS operatorName
+                FROM financial_update_record r
+                LEFT JOIN system_users u ON u.id=r.operator_user_id AND u.tenant_id=r.tenant_id
+                WHERE r.tenant_id=:tenantId AND r.family_id=:familyId AND r.member_id IN (:members)
+                """ + (excludeFixed ? " AND r.category_code<>'fixed'" : "") + " ORDER BY r.created_at,r.id",
+                Map.of("familyId", scope.familyId(), "members", visibleMembers));
+        return AssetWorkbook.write(scope.family().get("name").toString(), String.join("、", members.values()),
+                excludeFixed, hidden, members, categories, accounts, summary(totals(accounts, false)), history);
     }
 
     private Map<String, BigDecimal> totals(List<Map<String, Object>> accounts, boolean excludeFixed) {

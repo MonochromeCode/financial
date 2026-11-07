@@ -6,11 +6,17 @@ import cn.iocoder.financial.server.module.assets.service.AssetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -96,6 +102,20 @@ public class AssetController {
     public CommonResult<?> dashboard(@RequestParam(required = false) Long memberId,
                                                        @RequestParam(defaultValue = "false") boolean excludeFixed) {
         return success(decimalStrings(service.dashboard(memberId, excludeFixed)));
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出当前可见范围的家庭资产汇总、当前账户和全部历史明细")
+    public ResponseEntity<byte[]> exportExcel(@RequestParam(required = false) Long memberId,
+            @RequestParam(defaultValue = "false") boolean excludeFixed,
+            @RequestParam(defaultValue = "false") boolean hidden) throws IOException {
+        byte[] workbook = service.exportExcel(memberId, excludeFixed, hidden);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename("家庭资产-" + LocalDate.now() + ".xlsx", StandardCharsets.UTF_8).build().toString())
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(workbook);
     }
 
     @GetMapping("/trends")
