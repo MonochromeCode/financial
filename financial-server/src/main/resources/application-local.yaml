@@ -106,9 +106,9 @@ spring:
   data:
     redis:
       host: 172.28.39.53 # 地址
-      port: 6380 # 端口
+      port: 6379 # 端口
       database: 1 # 数据库索引
-      password: jizhang_local_6380
+#      password: jizhang_local_6380
 
 --- #################### 定时任务相关配置 ####################
 
